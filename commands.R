@@ -12,13 +12,15 @@ library(prismatic)
 library(ggrepel)
 #install.packages("ggimage")
 library(ggimage)
+
+load("./.RData")  #use this if environment doesn't load.
  
 # url storage
 url <- "https://fbref.com/en/comps/9/Premier-League-Stats"
 # read_html to scrape the items on url page
 full_table <- read_html(url, as.data.frame=T, stringsAsFactors = TRUE)
-# html_nodes to pull all nodes under the "tabloe" label
-# the numbeer (in this case 2) tells which table to pull from the list of tables
+# html_nodes to pull all nodes under the "table" label
+# the number (in this case 2) tells which table to pull from the list of tables
 # html_table converts it to table format
 prem <- full_table %>%  
   html_nodes("table") %>% 
