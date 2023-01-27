@@ -111,3 +111,27 @@ prem %>% ggplot(aes(x = xG, y = GF)) +
   geom_image(image = prem$logo_url) + 
   theme_light() + 
   geom_smooth(method = "lm", se = F)
+
+
+#### looking at xG and G, and maybe ELO ####
+EPL22 %>% ggplot(aes(x = HxG, y = homeGF )) + 
+  scale_x_continuous(breaks = c(1, 2, 3), minor_breaks = NULL) +
+  scale_y_continuous(breaks = c(0,1, 2, 3, 4, 5, 6, 7, 8, 9, 10), minor_breaks = NULL) +
+  geom_jitter(height = 0.1) + 
+  geom_abline(slope = 1, intercept = 0) +
+  theme_bw() +
+  facet_wrap(~Home) +
+  labs(title = "GF vs xGF at Home",
+       x = "Home team xG",
+       y = "Home team GF")
+
+EPL22 %>% ggplot(aes(x = AxG, y = awayGF )) + 
+  scale_x_continuous(breaks = c(1, 2, 3, 4, 5), minor_breaks = NULL) +
+  scale_y_continuous(breaks = c(0,1, 2, 3, 4, 5, 6, 7, 8, 9, 10), minor_breaks = NULL) +
+  geom_jitter(height = 0.1) + 
+  geom_abline(slope = 1, intercept = 0) +
+  theme_bw() +
+  facet_wrap(~Away) +
+  labs(title = "GF vs xGF on the Road",
+       x = "Away team xG",
+       y = "Away team GF")
