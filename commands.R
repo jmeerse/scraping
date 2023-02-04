@@ -12,6 +12,8 @@ library(prismatic)
 library(ggrepel)
 #install.packages("ggimage")
 library(ggimage)
+#install.packages("EloRating")
+library(EloRating)
 
 load("./.RData")  #use this if environment doesn't load.
  
@@ -135,3 +137,82 @@ EPL22 %>% ggplot(aes(x = AxG, y = awayGF )) +
   labs(title = "GF vs xGF on the Road",
        x = "Away team xG",
        y = "Away team GF")
+
+EPL22_games <- EPL22_games %>% mutate(ha_win = case_when(homeGF > awayGF ~ "home",
+                                                         homeGF < awayGF ~ "away",
+                                                         homeGF == awayGF ~ "draw"))
+
+EPL22_games %>% ggplot(aes(x = HxG, y = AxG, color = ha_win)) + 
+  scale_colour_manual(name = 'Winner', 
+                      values = setNames(c('green','red', 'yellow'),
+                                        c("home", "away", "draw"))) +
+  geom_jitter(width = 0.025, height = 0.025) + 
+  geom_abline(slope = 1, intercept = 0)
+
+
+EPL22_games <- EPL22_games %>% mutate(home_pts = case_when(homeGF > awayGF ~ 3,
+                                                           homeGF < awayGF ~ 0,
+                                                           homeGF == awayGF ~ 1),
+                                      away_pts = case_when(homeGF > awayGF ~ 0,
+                                                           homeGF < awayGF ~ 3,
+                                                           homeGF == awayGF ~ 1),
+                                      home_pts_xg = case_when(HxG > AxG ~ 3,
+                                                              HxG < AxG ~ 0,
+                                                              HxG == AxG ~ 1),
+                                      away_pts_xg = case_when(HxG > AxG ~ 0,
+                                                              HxG < AxG ~ 3,
+                                                              HxG == AxG ~ 1)
+                                      )
+
+
+home_xg <- EPL22_games %>% group_by(Home) %>% 
+  summarise(pts_home = sum(home_pts, na.rm = T),
+            xg_pts_home = sum(home_pts_xg, na.rm = T),
+            GF_home = sum(homeGF, na.rm = T),
+            xG_home = sum(HxG, na.rm = T)
+            )
+
+away_xg <- EPL22_games %>% group_by(Away) %>% 
+  summarise(pts_away = sum(away_pts, na.rm = T),
+            xg_pts_away = sum(away_pts_xg, na.rm = T),
+            GF_away = sum(awayGF, na.rm = T),
+            xG_away = sum(AxG, na.rm = T)
+  )
+
+xg_points <- left_join(home_xg, away_xg, by= c("Home" = "Away"))
+xg_points <- xg_points %>% mutate(pts = pts_home + pts_away,
+                                  xg_pts = xg_pts_home + xg_pts_away)
+
+xg_points <- left_join(xg_points, EPL_logos, by = c("Home" = "Squad"))
+
+xg_points %>% ggplot(aes(x = xg_pts, y = pts)) + 
+  geom_image(image = xg_points$logo_url) + 
+  geom_text_repel(aes(label = Home)) +
+  geom_abline(slope = 1, intercept = 0) +
+  theme_bw()
+
+
+
+
+#### trying EloRating package ####
+#need winner, loser, draw columns
+EPL22 <- EPL22 %>% mutate(winner = if_else(homeGF > awayGF, Home, 
+                                           if_else(homeGF < awayGF, Away, 
+                                                   Home)),
+                          loser = if_else(homeGF > awayGF, Away, 
+                                          if_else(homeGF < awayGF, Home, 
+                                                  Away)),
+                          draw = if_else(homeGF == awayGF, "TRUE", "FALSE"))
+
+res <- elo.seq(winner = EPL22_games$winner, loser = EPL22_games$loser, Date = EPL22_games$Date, runcheck = FALSE, draw = EPL22_games$draw)
+eloplot(res)
+
+ratings <- res$cmat #makes a ratings matrix
+View(ratings)
+dates <- res$truedates #gets a list of dates
+ratings <- as.data.frame(ratings) #in dataframe form
+View(ratings)
+ratings$dates <- dates #make dates vector
+ratings$index <- seq_along(ratings$dates)
+ratings_long <- gather(ratings, team, Elo, 1:20)
+#need to get rid of World Cup gap from 11/13 to 12/26
